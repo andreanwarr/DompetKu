@@ -1,0 +1,35 @@
+import { Head } from '@inertiajs/react';
+import AppearanceTabs from '@/components/appearance-tabs';
+import Heading from '@/components/heading';
+import { edit as editAppearance } from '@/routes/appearance';
+import { t } from '@/lib/i18n';
+
+export default function Appearance() {
+    return (
+        <>
+            <Head title={t('Pengaturan tampilan')} />
+
+            <h1 className="sr-only">{t('Pengaturan tampilan')}</h1>
+
+            <div className="space-y-6">
+                <Heading
+                    variant="small"
+                    title={t('Pengaturan tampilan')}
+                    description={t(
+                        'Pilih tema terang, gelap, atau ikuti sistem perangkat',
+                    )}
+                />
+                <AppearanceTabs />
+            </div>
+        </>
+    );
+}
+
+Appearance.layout = {
+    breadcrumbs: [
+        {
+            title: t('Pengaturan tampilan'),
+            href: editAppearance(),
+        },
+    ],
+};
