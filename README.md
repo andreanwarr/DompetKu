@@ -1,32 +1,34 @@
 # DompetKu
 
-Aplikasi catatan keuangan personal berbasis Laravel 13, React 19, Inertia, PostgreSQL, dan double-entry ledger.
+[English](README.md) · [Bahasa Indonesia](README.id.md)
 
-## Fitur
+A personal finance tracker built on Laravel 13, React 19, Inertia, PostgreSQL, and a double-entry ledger.
 
-- Pemasukan, pengeluaran, transfer, dan tanggal transaksi kustom.
-- **Edit transaksi** — ubah nominal, kategori, sumber dana, tanggal, atau jenis pemasukan↔pengeluaran; journal line dihapus & ditulis ulang dalam satu DB transaction.
-- **Input nominal Rupiah berformat** — ketik `10000000` tampil `10.000.000`; shorthand `10k` → 10.000; chips Rp10rb–Rp100rb.
-- Dashboard bulan ini, bulan lalu, atau tiga bulan terakhir.
-- **Sisa kas vs sisa konsumsi** — setoran tabungan mengurangi saldo kas, tapi tidak dihitung sebagai konsumsi. Dua sudut pandang ditampilkan berdampingan.
-- **Pemasukan rutin vs bonus** — transaksi bertanda non-rutin (bonus/THR) tetap masuk saldo dan arus kas, tetapi tidak menggelembungkan patokan anggaran bulanan: sisa bulan, rasio 50/30/20, dan persentase kategori selalu dihitung dari gaji rutin. Bonus tampil terpisah di Dashboard dan Laporan.
-- **Laporan interaktif** — card Pemasukan/Pengeluaran/Arus bersih bisa diklik: rincian per kategori (nominal + persen), dan setiap kategori bisa dibuka lagi menjadi daftar transaksinya. Rentang tanggal memakai kalender kustom.
-- Saldo keseluruhan (kekayaan bersih), saldo periode, dan saldo likuid saat ini.
-- Sumber dana serta kategori kustom yang terisolasi per user.
-- **Kategori dengan kelompok** — tiap kategori ditandai Kebutuhan wajib / Gaya hidup / Tabungan; menentukan bagaimana saran otomatis menilai.
-- Target tabungan, kasbon/piutang, pinjaman/utang, dan pembayaran parsial.
-- **Setoran tabungan dari luar** — mis. istri menabung; saldo sumber dana tidak tersentuh, tabungan tetap nambah; histori mutasi per goal mencatat siapa & dari mana.
-- Kasbon mengurangi sumber dana ketika diberikan dan mengembalikannya ketika dibayar.
-- **Laporan dengan donut chart SVG native** — alokasi pemasukan (kategori + sisa uang = 100%); persentase selalu dari pemasukan, bukan dari total pengeluaran.
-- **Saran otomatis** berbasis patokan 50/30/20 (Warren & Tyagi, *All Your Worth*, 2005): rasio tabungan ≥20%, kebutuhan wajib ≤50%, gaya hidup ≤30%, dana darurat 3–6× pengeluaran bulanan. Kategori wajib tidak disarankan dipangkas.
-- **Export Excel multi-sheet** termasuk sheet `Analisis` flat untuk parsing AI.
-- Bahasa Indonesia/English serta mode terang/gelap/sistem.
-- Layout mobile-first dengan sidebar off-canvas, form adaptif, dan target sentuh 44 px.
-- Autentikasi, profil, passkey, dan 2FA.
+## Features
 
-## Menjalankan di lokal
+- Income, expenses, transfers, and custom transaction dates.
+- **Edit transactions** — change amount, category, fund source, date, or flip income↔expense; journal lines are deleted and rewritten within a single DB transaction.
+- **Formatted Rupiah input** — type `10000000` and see `10.000.000`; shorthand `10k` → 10,000; quick chips Rp10k–Rp100k.
+- Dashboard for this month, last month, or the last three months.
+- **Cash left vs consumable left** — savings deposits reduce cash balance but are not counted as consumption. Both views are shown side by side.
+- **Recurring income vs bonus** — non-recurring transactions (bonus/THR) still enter the balance and cash flow, but never inflate the monthly budget baseline: monthly leftover, the 50/30/20 ratios, and category percentages are always computed from recurring salary. Bonuses are displayed separately on the Dashboard and Reports.
+- **Interactive reports** — the Income/Expense/Net flow cards are clickable: breakdown per category (amount + percentage), and each category opens further into its transaction list. Date ranges use a custom calendar.
+- Net worth, period balance, and current liquid balance.
+- Custom fund sources and categories, isolated per user.
+- **Categorized buckets** — every category is tagged Essentials / Lifestyle / Savings; this drives how the automatic advice judges spending.
+- Savings goals, receivables, loans, and partial payments.
+- **External savings deposits** — e.g. a spouse contributes; the fund source balance is untouched while the goal grows; per-goal movement history records who and from where.
+- Receivables reduce the fund source when issued and restore it when repaid.
+- **Reports with native SVG donut charts** — income allocation (categories + leftover = 100%); percentages are always relative to income, never to total expenses.
+- **Automatic advice** based on the 50/30/20 rule (Warren & Tyagi, *All Your Worth*, 2005): savings ratio ≥20%, essentials ≤50%, lifestyle ≤30%, emergency fund of 3–6× monthly expenses. Essential categories are never advised to be cut.
+- **Multi-sheet Excel export** including a flat `Analisis` sheet for AI parsing.
+- Indonesian/English language and light/dark/system theme.
+- Mobile-first layout with off-canvas sidebar, adaptive forms, and 44 px touch targets.
+- Authentication, profile, passkeys, and 2FA.
 
-Database lokal yang direkomendasikan adalah PostgreSQL 17 agar sama dengan production. PostgreSQL dan Redis dijalankan melalui Docker, sementara PHP dapat memakai Laravel Herd.
+## Running locally
+
+The recommended local database is PostgreSQL 17 to match production. PostgreSQL and Redis run via Docker, while PHP can be served by Laravel Herd.
 
 ```bash
 docker compose -f compose.local.yml up -d
@@ -39,11 +41,11 @@ npm run build
 composer run dev
 ```
 
-Salin nilai `DB_*` dari `.env.example` (mengikuti `compose.local.yml`) ke `.env`. Akun demo hasil seeder beserta kredensialnya tercantum di [`database/seeders/DatabaseSeeder.php`](database/seeders/DatabaseSeeder.php) — seluruh datanya fiktif.
+Copy the `DB_*` values from `.env.example` (matching `compose.local.yml`) into `.env`. The demo account created by the seeder and its credentials are listed in [`database/seeders/DatabaseSeeder.php`](database/seeders/DatabaseSeeder.php) — all of its data is fictional.
 
-Untuk demo tanpa Docker, ubah `DB_CONNECTION=sqlite`, kosongkan variabel `DB_*` lain, buat file `database/database.sqlite`, lalu jalankan migrasi.
+For a demo without Docker, set `DB_CONNECTION=sqlite`, clear the other `DB_*` variables, create `database/database.sqlite`, then run the migrations.
 
-## Pemeriksaan kualitas
+## Quality checks
 
 ```bash
 php artisan test
@@ -52,18 +54,18 @@ npm run types:check
 npm run build
 ```
 
-UI perlu diuji pada lebar 320, 375, 768, 1024, dan 1280 px, dalam mode terang dan gelap.
+The UI should be verified at widths 320, 375, 768, 1024, and 1280 px, in both light and dark modes.
 
-## Deploy ke VPS
+## Deploying to a VPS
 
 ```bash
 cp .env.production.example .env.production
-# Isi APP_KEY, URL, password PostgreSQL, password Redis, dan mail provider.
+# Fill in APP_KEY, URL, PostgreSQL password, Redis password, and mail provider.
 docker compose --env-file .env.production -f compose.production.yml build
 docker compose --env-file .env.production -f compose.production.yml run --rm app php artisan migrate --force
 docker compose --env-file .env.production -f compose.production.yml up -d
 ```
 
-Image `app` sudah berisi PHP/vendor/build frontend dan image `web` sudah berisi aset publik, sehingga deploy tidak bergantung pada `vendor`, `node_modules`, atau `public/build` milik host. Pasang TLS pada reverse proxy dan siapkan backup PostgreSQL terjadwal sebelum go-live.
+The `app` image already contains PHP/vendor/frontend build and the `web` image contains the public assets, so deploys do not depend on the host's `vendor`, `node_modules`, or `public/build`. Set up TLS on the reverse proxy and schedule PostgreSQL backups before going live.
 
-Detail keputusan teknis tersedia di [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Technical decision details are available in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
