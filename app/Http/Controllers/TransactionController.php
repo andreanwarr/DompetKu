@@ -30,6 +30,7 @@ class TransactionController extends Controller
                 'counterparty' => $entry->counterparty,
                 'fund_source_id' => $entry->lines->firstWhere('account_type', 'fund_source')?->account_id,
                 'category_id' => $entry->lines->firstWhere('account_type', $entry->type)?->category_id,
+                'is_recurring' => (bool) $entry->is_recurring,
             ]);
 
         return Inertia::render('transactions/index', [
@@ -50,6 +51,7 @@ class TransactionController extends Controller
             'description' => ['required', 'string', 'max:255'],
             'counterparty' => ['nullable', 'string', 'max:1000'],
             'idempotency_key' => ['nullable', 'uuid'],
+            'is_recurring' => ['nullable', 'boolean'],
         ]);
 
         // idempotensi: key duplikat = request ulang, anggap sukses
@@ -73,6 +75,7 @@ class TransactionController extends Controller
             'effective_date' => ['required', 'date'],
             'description' => ['required', 'string', 'max:255'],
             'counterparty' => ['nullable', 'string', 'max:1000'],
+            'is_recurring' => ['nullable', 'boolean'],
         ]);
 
         // hapus line lama + repost dengan nilai baru dalam satu transaksi; key baru supaya tidak nabrak unique constraint
@@ -82,6 +85,7 @@ class TransactionController extends Controller
                 'type' => $data['type'], 'amount_minor' => $data['amount_minor'], 'effective_date' => $data['effective_date'],
                 'description' => $data['description'], 'counterparty' => $data['counterparty'] ?? null,
                 'idempotency_key' => (string) Str::uuid(),
+                'is_recurring' => $data['is_recurring'] ?? true,
             ]);
             $ledger->postLines($entry, $data);
             $ledger->assertBalanced($entry);

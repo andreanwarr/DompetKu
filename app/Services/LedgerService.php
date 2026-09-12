@@ -28,6 +28,7 @@ class LedgerService
                 'description' => $data['description'] ?? null,
                 'counterparty' => $data['counterparty'] ?? null,
                 'idempotency_key' => $data['idempotency_key'] ?? null,
+                'is_recurring' => (bool) ($data['is_recurring'] ?? true),
             ]);
 
             if ($data['type'] === 'income') {

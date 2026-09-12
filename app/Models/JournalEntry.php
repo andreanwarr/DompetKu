@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class JournalEntry extends Model
 {
-    protected $fillable = ['user_id', 'public_id', 'type', 'status', 'amount_minor', 'effective_date', 'description', 'counterparty', 'idempotency_key', 'reversed_entry_id'];
+    protected $fillable = ['user_id', 'public_id', 'type', 'status', 'amount_minor', 'effective_date', 'description', 'counterparty', 'idempotency_key', 'reversed_entry_id', 'is_recurring'];
 
     protected function casts(): array
     {
-        return ['amount_minor' => 'integer', 'effective_date' => 'date'];
+        return ['amount_minor' => 'integer', 'effective_date' => 'date', 'is_recurring' => 'boolean'];
     }
 
     public function lines(): HasMany

@@ -9,6 +9,8 @@ Aplikasi catatan keuangan personal berbasis Laravel 13, React 19, Inertia, Postg
 - **Input nominal Rupiah berformat** — ketik `10000000` tampil `10.000.000`; shorthand `10k` → 10.000; chips Rp10rb–Rp100rb.
 - Dashboard bulan ini, bulan lalu, atau tiga bulan terakhir.
 - **Sisa kas vs sisa konsumsi** — setoran tabungan mengurangi saldo kas, tapi tidak dihitung sebagai konsumsi. Dua sudut pandang ditampilkan berdampingan.
+- **Pemasukan rutin vs bonus** — transaksi bertanda non-rutin (bonus/THR) tetap masuk saldo dan arus kas, tetapi tidak menggelembungkan patokan anggaran bulanan: sisa bulan, rasio 50/30/20, dan persentase kategori selalu dihitung dari gaji rutin. Bonus tampil terpisah di Dashboard dan Laporan.
+- **Laporan interaktif** — card Pemasukan/Pengeluaran/Arus bersih bisa diklik: rincian per kategori (nominal + persen), dan setiap kategori bisa dibuka lagi menjadi daftar transaksinya. Rentang tanggal memakai kalender kustom.
 - Saldo keseluruhan (kekayaan bersih), saldo periode, dan saldo likuid saat ini.
 - Sumber dana serta kategori kustom yang terisolasi per user.
 - **Kategori dengan kelompok** — tiap kategori ditandai Kebutuhan wajib / Gaya hidup / Tabungan; menentukan bagaimana saran otomatis menilai.

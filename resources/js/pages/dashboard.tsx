@@ -25,6 +25,8 @@ type Summary = {
     periodBalance: number;
     availableBalance: number;
     income: number;
+    recurringIncome: number;
+    bonusIncome: number;
     expense: number;
     savingDeposits: number;
     savingWithdrawals: number;
@@ -146,9 +148,17 @@ export default function Dashboard({
                                 )}
                                 items={[
                                     {
-                                        label: t('Pemasukan'),
-                                        value: rupiah(summary.income),
+                                        label: t('Gaji rutin'),
+                                        value: rupiah(summary.recurringIncome),
                                     },
+                                    ...(summary.bonusIncome > 0
+                                        ? [
+                                              {
+                                                  label: t('Bonus (di luar patokan)'),
+                                                  value: rupiah(summary.bonusIncome),
+                                              },
+                                          ]
+                                        : []),
                                     {
                                         label: t('Pengeluaran'),
                                         value: rupiah(summary.expense),
@@ -223,6 +233,9 @@ export default function Dashboard({
                                 icon: ArrowDownLeft,
                                 tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
                                 label: t('Uang masuk'),
+                                detail: summary.bonusIncome > 0
+                                    ? `${t('Gaji')} ${rupiah(summary.recurringIncome)} · ${t('Bonus')} ${rupiah(summary.bonusIncome)}`
+                                    : undefined,
                             },
                             {
                                 title: t('Pengeluaran'),
@@ -256,6 +269,9 @@ export default function Dashboard({
                                 </div>
                                 <div className="text-muted-foreground border-t pt-3 text-xs">
                                     {metric.label}
+                                    {metric.detail && (
+                                        <p className="text-foreground/70 mt-1 truncate">{metric.detail}</p>
+                                    )}
                                 </div>
                             </div>
                         ))}

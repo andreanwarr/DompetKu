@@ -26,13 +26,17 @@ class ReportController extends Controller
         $incomeByCategory = $this->categoryTotals($userId, 'income', $from, $to);
         // saran otomatis via InsightService: basis bulan terakhir dalam rentang filter
         $insights = InsightService::build($userId, $monthly->last()['month'] ?? null);
-        $categoryDetails = JournalEntry::ownedBy($userId)->with('lines')->where('status', 'posted')->where('type', 'expense')->whereBetween('effective_date', [$from, $to])->orderByDesc('effective_date')->orderByDesc('id')->get()->map(fn (JournalEntry $entry) => [
-            'category_id' => $entry->lines->firstWhere('account_type', 'expense')?->category_id,
+        $categoryDetails = JournalEntry::ownedBy($userId)->with('lines')->where('status', 'posted')->whereIn('type', ['income', 'expense'])->whereBetween('effective_date', [$from, $to])->orderByDesc('effective_date')->orderByDesc('id')->get()->map(fn (JournalEntry $entry) => [
+            'type' => $entry->type,
+            'category_id' => $entry->lines->firstWhere('account_type', $entry->type)?->category_id,
             'title' => $entry->description ?: ucfirst(str_replace('_', ' ', $entry->type)), 'amount' => $entry->amount_minor, 'date' => $entry->effective_date->toDateString(),
         ])->groupBy('category_id');
+        // pisahkan gaji rutin dan bonus: patokan budget = pemasukan rutin saja
+        $recurringIncome = (int) $entries->where('type', 'income')->where('is_recurring', true)->sum('amount_minor');
+        $bonusIncome = $income - $recurringIncome;
         return Inertia::render('reports/index', [
             'filters' => compact('from', 'to'),
-            'summary' => compact('income', 'expense'),
+            'summary' => compact('income', 'expense') + ['recurringIncome' => $recurringIncome, 'bonusIncome' => $bonusIncome],
             'monthly' => $monthly,
             'expenseByCategory' => $expenseByCategory,
             'incomeByCategory' => $incomeByCategory,

@@ -43,6 +43,7 @@ type Entry = {
     counterparty?: string;
     fund_source_id?: number;
     category_id?: number;
+    is_recurring?: boolean;
 };
 type Props = {
     transactions: { data: Entry[] };
@@ -88,6 +89,7 @@ export default function Transactions({
         effective_date: localDate(),
         description: '',
         counterparty: '',
+        is_recurring: true,
         idempotency_key: newIdempotencyKey(),
         from_fund_source_id: '',
         to_fund_source_id: '',
@@ -155,6 +157,7 @@ export default function Transactions({
             effective_date: item.date,
             description: item.description ?? '',
             counterparty: item.counterparty ?? '',
+            is_recurring: item.is_recurring ?? true,
         });
         setOpenEdit(true);
     };
@@ -457,6 +460,12 @@ export default function Transactions({
                                         )}
                                     </div>
                                 </Field>
+                                {mode === 'income' && (
+                                    <label className="border-border flex items-center gap-3 rounded-2xl border p-3 text-sm">
+                                        <input type="checkbox" className="size-4" checked={form.data.is_recurring} onChange={(e) => form.setData('is_recurring', e.target.checked)} />
+                                        <span className="flex-1">{t('Pemasukan rutin')}<span className="text-muted-foreground block text-xs">{t('Nonaktifkan untuk bonus/THR — tidak dihitung dalam patokan bulanan.')}</span></span>
+                                    </label>
+                                )}
                                 <Field
                                     label={t('Catatan')}
                                     error={form.errors.counterparty}
@@ -617,6 +626,12 @@ export default function Transactions({
                                         required
                                     />
                                 </Field>
+                                {mode === 'income' && (
+                                    <label className="border-border flex items-center gap-3 rounded-2xl border p-3 text-sm">
+                                        <input type="checkbox" className="size-4" checked={form.data.is_recurring} onChange={(e) => form.setData('is_recurring', e.target.checked)} />
+                                        <span className="flex-1">{t('Pemasukan rutin')}<span className="text-muted-foreground block text-xs">{t('Nonaktifkan untuk bonus/THR — tidak dihitung dalam patokan bulanan.')}</span></span>
+                                    </label>
+                                )}
                                 <Field
                                     label={t('Catatan')}
                                     error={form.errors.counterparty}

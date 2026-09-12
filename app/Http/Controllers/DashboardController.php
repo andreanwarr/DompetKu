@@ -53,6 +53,7 @@ class DashboardController extends Controller
             ->where('status', 'posted')
             ->whereBetween('effective_date', [$start->toDateString(), $end->toDateString()]);
         $income = (clone $periodEntries)->where('type', 'income')->sum('amount_minor');
+        $recurringIncome = (clone $periodEntries)->where('type', 'income')->where('is_recurring', true)->sum('amount_minor');
         $expense = (clone $periodEntries)->where('type', 'expense')->sum('amount_minor');
         // setoran tabungan bulan ini: uang keluar dari kas, tapi bukan konsumsi — dipisah biar dua sudut pandang sama-sama jujur
         $savingDeposits = (clone $periodEntries)->where('type', 'savings_deposit')->sum('amount_minor');
@@ -107,9 +108,12 @@ class DashboardController extends Controller
             'range' => ['start' => $start->toDateString(), 'end' => $end->toDateString()],
             'summary' => [
                 'netWorth' => $available + $receivables,
-                'periodBalance' => (int) $income - (int) $expense - (int) $savingDeposits + (int) $savingWithdrawals,
+                // saldo bulan ini = gaji rutin - konsumsi - setor tabungan; bonus tidak masuk anggaran bulanan
+                'periodBalance' => (int) $recurringIncome - (int) $expense - (int) $savingDeposits + (int) $savingWithdrawals,
                 'availableBalance' => $available,
                 'income' => (int) $income,
+                'recurringIncome' => (int) $recurringIncome,
+                'bonusIncome' => (int) $income - (int) $recurringIncome,
                 'expense' => (int) $expense,
                 'savingDeposits' => (int) $savingDeposits,
                 'savingWithdrawals' => (int) $savingWithdrawals,

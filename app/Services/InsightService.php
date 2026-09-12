@@ -24,6 +24,9 @@ class InsightService
         $monthLabel = ($bln[substr($month, 5, 2)] ?? $month).' '.substr($month, 0, 4);
 
         $income = (int) JournalEntry::ownedBy($userId)->where('status', 'posted')->where('type', 'income')->whereBetween('effective_date', [$mFrom, $mTo])->sum('amount_minor');
+        // patokan persentase = pemasukan rutin (gaji); bonus/thr (is_recurring=false) tidak menggelembungkan denominator
+        $baseIncome = (int) JournalEntry::ownedBy($userId)->where('status', 'posted')->where('type', 'income')->where('is_recurring', true)->whereBetween('effective_date', [$mFrom, $mTo])->sum('amount_minor');
+        $bonus = max($income - $baseIncome, 0);
         $expense = (int) JournalEntry::ownedBy($userId)->where('status', 'posted')->where('type', 'expense')->whereBetween('effective_date', [$mFrom, $mTo])->sum('amount_minor');
         // nabung bulan ini: setor dari kas + setoran dari luar (mis. istri)
         $dep = (int) JournalEntry::ownedBy($userId)->where('status', 'posted')->where('type', 'savings_deposit')->whereBetween('effective_date', [$mFrom, $mTo])->sum('amount_minor');
@@ -43,17 +46,20 @@ class InsightService
 
         $insights = [];
         $net = $income - $expense;
+        $budgetNet = $baseIncome - $expense;
 
-        // 1. sisa uang / hemat
-        if ($income > 0) {
-            $rate = round($net / $income * 100, 1);
-            if ($net >= 0) {
+        // 1. sisa uang / hemat — patokan: gaji rutin
+        if ($baseIncome > 0) {
+            $denom = $baseIncome;
+            $rate = round($budgetNet / $denom * 100, 1);
+            $bonusNote = $bonus > 0 ? " Bonus {$rp($bonus)} tercatat terpisah dan tidak dihitung sebagai anggaran bulanan." : '';
+            if ($budgetNet >= 0) {
                 $insights[] = [
                     'type' => $rate >= 20 ? 'positive' : 'warning',
-                    'text' => "Dari uang masuk {$rp($income)}, sisa {$rp($net)} (hemat {$rate}%). Patokan sehat: mampu menyisakan 20% — ".($rate >= 20 ? 'sudah lolos.' : 'belum tercapai.'),
+                    'text' => "Dari gaji rutin {$rp($baseIncome)}, sisa anggaran {$rp($budgetNet)} (hemat {$rate}%). Patokan sehat: mampu menyisakan 20% — ".($rate >= 20 ? 'sudah lolos.' : 'belum tercapai.').$bonusNote,
                 ];
             } else {
-                $insights[] = ['type' => 'warning', 'text' => "Bulan ini uang keluar {$rp($expense)}, lebih besar dari uang masuk {$rp($income)} — jebol {$rp(abs($net))}. Cek pos fleksibel dulu sebelum kebutuhan wajib."];
+                $insights[] = ['type' => 'warning', 'text' => "Bulan ini uang keluar {$rp($expense)}, lebih besar dari uang masuk {$rp($income)} — jebol {$rp(abs($net))}. Cek pos fleksibel dulu sebelum kebutuhan wajib.".$bonusNote];
             }
             // nabung bulan ini (dari saldo + dari luar)
             if ($dep > 0) {
@@ -65,15 +71,15 @@ class InsightService
             }
         }
 
-        // 2. kebutuhan wajib
-        if ($income > 0 && ($essentials > 0 || $lifestyle > 0)) {
-            $shareE = round($essentials / $income * 100, 1);
+        // 2. kebutuhan wajib — patokan: gaji rutin
+        if ($baseIncome > 0 && ($essentials > 0 || $lifestyle > 0)) {
+            $shareE = round($essentials / $baseIncome * 100, 1);
             $insights[] = $shareE > 50
                 ? ['type' => 'warning', 'text' => "Kebutuhan wajib (keluarga, rumah tangga, makan, transport) pakai {$rp($essentials)} = {$shareE}% uang masuk — sedikit di atas batas wajar 50%. Ini kewajiban, bukan boros: solusinya efisiensi harga atau tambah pemasukan, bukan memangkasnya."]
                 : ['type' => 'positive', 'text' => "Kebutuhan wajib (keluarga, rumah tangga, makan, transport) pakai {$rp($essentials)} = {$shareE}% uang masuk — wajar (patokan maksimal 50%)."];
-            $shareL = round($lifestyle / $income * 100, 1);
+            $shareL = round($lifestyle / $baseIncome * 100, 1);
             if ($lifestyle > 0 && $shareL > 30) {
-                $over = $lifestyle - (int) round($income * 0.3);
+                $over = $lifestyle - (int) round($baseIncome * 0.3);
                 $insights[] = ['type' => 'warning', 'text' => "Pos santai (belanja, olahraga, lain-lain) {$rp($lifestyle)} = {$shareL}% uang masuk — lewat batas wajar 30%. Kalau mau hemat, tekan sekitar {$rp($over)}/bulan dari sini dulu."];
             } elseif ($lifestyle > 0) {
                 $insights[] = ['type' => 'positive', 'text' => "Pos santai cuma {$rp($lifestyle)} = {$shareL}% uang masuk — jauh di bawah batas 30%. Aman."];
@@ -84,7 +90,7 @@ class InsightService
         $top = $cats->first();
         if ($top && $expense > 0) {
             $shareE = round((int) $top->total / $expense * 100, 1);
-            $shareI = $income > 0 ? round((int) $top->total / $income * 100, 1) : 0;
+            $shareI = $baseIncome > 0 ? round((int) $top->total / $baseIncome * 100, 1) : 0;
             $isEssential = $bucketOf($top) === 'essential';
             $hint = $isEssential
                 ? 'Ini kewajiban rutin — hematnya lewat harga/langganan yang lebih murah, bukan dikurangi porsinya'

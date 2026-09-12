@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { rupiah } from '@/lib/format';
+import { rupiah, shortDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
 
 type Month = { month: string; income: number; expense: number };
@@ -21,7 +21,7 @@ type CategoryExpense = {
     color: string;
     total: number;
 };
-type CategoryTx = { title: string; amount: number; date: string };
+type CategoryTx = { type?: string; title: string; amount: number; date: string };
 export default function Reports({
     filters,
     summary,
@@ -32,7 +32,7 @@ export default function Reports({
     categoryTransactions,
 }: {
     filters: { from: string; to: string };
-    summary: { income: number; expense: number };
+    summary: { income: number; expense: number; recurringIncome: number; bonusIncome: number };
     monthly: Month[];
     expenseByCategory: CategoryExpense[];
     incomeByCategory: CategoryExpense[];
@@ -126,12 +126,18 @@ export default function Reports({
                         value={summary.income}
                         icon={TrendingUp}
                         tone="emerald"
+                        details={categoryDetails(incomeByCategory, summary.income)}
+                        categoryData={incomeByCategory}
+                        categoryTransactions={categoryTransactions}
                     />
                     <Metric
                         title={t('Pengeluaran')}
                         value={summary.expense}
                         icon={TrendingDown}
                         tone="rose"
+                        details={categoryDetails(expenseByCategory, summary.expense)}
+                        categoryData={expenseByCategory}
+                        categoryTransactions={categoryTransactions}
                     />
                     <Metric
                         title={t('Arus bersih')}
@@ -142,6 +148,15 @@ export default function Reports({
                                 : TrendingDown
                         }
                         tone="teal"
+                        details={[
+                            { label: t('Gaji rutin'), value: rupiah(summary.recurringIncome), tone: 'positive' },
+                            ...(summary.bonusIncome > 0
+                                ? [{ label: t('Bonus (di luar patokan)'), value: rupiah(summary.bonusIncome) }]
+                                : []),
+                            { label: t('Pengeluaran'), value: rupiah(summary.expense), tone: 'negative' },
+                            { label: t('Sisa berdasarkan gaji'), value: rupiah(summary.recurringIncome - summary.expense) },
+                            { label: t('Arus kas aktual'), value: rupiah(summary.income - summary.expense) },
+                        ]}
                     />
                 </section>
                 {insights.length > 0 && (
@@ -530,16 +545,35 @@ function DateField({
     );
 }
 
+function categoryDetails(
+    data: CategoryExpense[],
+    total: number,
+): { label: string; value: string; tone?: 'positive' | 'negative' }[] {
+    return data.map((item) => ({
+        label: item.name,
+        value:
+            total > 0
+                ? `${rupiah(item.total)} · ${Math.round((Number(item.total) / total) * 100)}%`
+                : rupiah(item.total),
+    }));
+}
+
 function Metric({
     title,
     value,
     icon: Icon,
     tone,
+    details = [],
+    categoryData,
+    categoryTransactions,
 }: {
     title: string;
     value: number;
     icon: typeof TrendingUp;
     tone: string;
+    details?: { label: string; value: string; tone?: 'positive' | 'negative' }[];
+    categoryData?: CategoryExpense[];
+    categoryTransactions?: Record<string, CategoryTx[]>;
 }) {
     const colors: Record<string, string> = {
         emerald:
@@ -552,7 +586,52 @@ function Metric({
             title={title}
             description={t('Laporan keuangan')}
             icon={Icon}
-            items={[{ label: t('Nilai'), value: rupiah(value) }]}
+            items={details.length > 0 ? details : [{ label: t('Nilai'), value: rupiah(value) }]}
+            footer={
+                categoryData && categoryData.length > 0 ? (
+                    <div className="mt-4 space-y-2">
+                        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                            {t('Klik kategori untuk rincian transaksi')}
+                        </p>
+                        {categoryData.map((cat) => (
+                            <DetailDialog
+                                key={cat.id}
+                                title={cat.name}
+                                description={t('Transaksi dalam kategori ini.')}
+                                icon={ReceiptText}
+                                items={[
+                                    { label: t('Total'), value: rupiah(cat.total) },
+                                ]}
+                                trigger={
+                                    <button
+                                        type="button"
+                                        className="hover:bg-muted/60 flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm transition-colors"
+                                    >
+                                        <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                                        <span className="min-w-0 flex-1 truncate">{cat.name}</span>
+                                        <span className="shrink-0 font-semibold tabular-nums">{rupiah(cat.total)}</span>
+                                    </button>
+                                }
+                            >
+                                <div className="border-border mt-4 max-h-64 divide-y overflow-y-auto rounded-2xl border">
+                                    {(categoryTransactions?.[String(cat.id)] ?? [])
+                                        .filter((tx) => !tx.type || tx.type === (title === t('Pemasukan') ? 'income' : 'expense'))
+                                        .map((tx, i) => (
+                                            <div key={`${tx.date}-${i}`} className="flex items-center gap-3 px-4 py-3 text-sm">
+                                                <span className="min-w-0 flex-1 truncate">{tx.title}</span>
+                                                <span className="text-muted-foreground shrink-0 text-xs">{shortDate(tx.date)}</span>
+                                                <span className="shrink-0 font-semibold tabular-nums">{rupiah(tx.amount)}</span>
+                                            </div>
+                                        ))}
+                                    {(categoryTransactions?.[String(cat.id)] ?? []).filter((tx) => !tx.type || tx.type === (title === t('Pemasukan') ? 'income' : 'expense')).length === 0 && (
+                                        <p className="text-muted-foreground px-4 py-3 text-sm">{t('Belum ada transaksi.')}</p>
+                                    )}
+                                </div>
+                            </DetailDialog>
+                        ))}
+                    </div>
+                ) : null
+            }
             trigger={
                 <button
                     type="button"
