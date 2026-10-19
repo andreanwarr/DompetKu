@@ -20,21 +20,44 @@ class TransactionController extends Controller
     public function index(Request $request): Response
     {
         $userId = (int) $request->user()->id;
-        $entries = JournalEntry::ownedBy($userId)->with('lines')->where('status', 'posted')
-            ->latest('effective_date')->latest('id')->paginate(20)->through(fn (JournalEntry $entry) => [
-                'id' => $entry->public_id,
-                'type' => $entry->type,
-                'amount' => $entry->amount_minor,
-                'date' => $entry->effective_date->toDateString(),
-                'description' => $entry->description,
-                'counterparty' => $entry->counterparty,
-                'fund_source_id' => $entry->lines->firstWhere('account_type', 'fund_source')?->account_id,
-                'category_id' => $entry->lines->firstWhere('account_type', $entry->type)?->category_id,
-                'is_recurring' => (bool) $entry->is_recurring,
-            ]);
+        // default: bulan berjalan; ?month=YYYY-MM; ?from/&to untuk rentang custom; ?category= & ?type= untuk filter
+        $month = (string) $request->query('month', now($request->user()->timezone ?? 'Asia/Jakarta')->format('Y-m'));
+        if (! preg_match('/^\d{4}-\d{2}$/', $month)) {
+            $month = now()->format('Y-m');
+        }
+        [$year, $mon] = array_map('intval', explode('-', $month));
+        $from = $request->string('from')->isNotEmpty() && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query('from'))
+            ? (string) $request->query('from')
+            : sprintf('%04d-%02d-01', $year, $mon);
+        $to = $request->string('to')->isNotEmpty() && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query('to'))
+            ? (string) $request->query('to')
+            : sprintf('%04d-%02d-%02d', $year, $mon, now()->create(sprintf('%04d-%02d-01', $year, $mon))->daysInMonth);
+        $type = in_array($request->query('type'), ['income', 'expense', 'transfer'], true) ? $request->query('type') : null;
+        $category = (int) $request->query('category', 0);
+
+        $query = JournalEntry::ownedBy($userId)->with('lines')->where('status', 'posted')
+            ->whereBetween('effective_date', [$from, $to]);
+        if ($type) {
+            $query->where('type', $type);
+        }
+        if ($category > 0) {
+            $query->whereHas('lines', fn ($q) => $q->where('category_id', $category));
+        }
+        $entries = $query->latest('effective_date')->latest('id')->paginate(100)->withQueryString()->through(fn (JournalEntry $entry) => [
+            'id' => $entry->public_id,
+            'type' => $entry->type,
+            'amount' => $entry->amount_minor,
+            'date' => $entry->effective_date->toDateString(),
+            'description' => $entry->description,
+            'counterparty' => $entry->counterparty,
+            'fund_source_id' => $entry->lines->firstWhere('account_type', 'fund_source')?->account_id,
+            'category_id' => $entry->lines->firstWhere('account_type', $entry->type)?->category_id,
+            'is_recurring' => (bool) $entry->is_recurring,
+        ]);
 
         return Inertia::render('transactions/index', [
             'transactions' => $entries,
+            'filters' => ['month' => $month, 'from' => $from, 'to' => $to, 'type' => $type, 'category' => $category],
             'fundSources' => FundSource::ownedBy($userId)->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'categories' => Category::ownedBy($userId)->where('is_archived', false)->orderBy('name')->get(['id', 'name', 'type']),
         ]);
@@ -92,6 +115,17 @@ class TransactionController extends Controller
         });
 
         return back()->with('success', __('Transaksi berhasil diubah.'));
+    }
+
+    public function destroy(Request $request, string $id): RedirectResponse
+    {
+        $entry = JournalEntry::ownedBy((int) $request->user()->id)->where('public_id', $id)->firstOrFail();
+        DB::transaction(function () use ($entry) {
+            $entry->lines()->delete();
+            $entry->delete();
+        });
+
+        return back()->with('success', __('Transaksi berhasil dihapus.'));
     }
 
     public function transfer(Request $request, LedgerService $ledger): RedirectResponse

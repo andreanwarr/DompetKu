@@ -55,9 +55,9 @@ class DashboardController extends Controller
         $income = (clone $periodEntries)->where('type', 'income')->sum('amount_minor');
         $recurringIncome = (clone $periodEntries)->where('type', 'income')->where('is_recurring', true)->sum('amount_minor');
         $expense = (clone $periodEntries)->where('type', 'expense')->sum('amount_minor');
-        // setoran tabungan bulan ini: uang keluar dari kas, tapi bukan konsumsi — dipisah biar dua sudut pandang sama-sama jujur
-        $savingDeposits = (clone $periodEntries)->where('type', 'savings_deposit')->sum('amount_minor');
-        $savingWithdrawals = (clone $periodEntries)->where('type', 'savings_withdrawal')->sum('amount_minor');
+        // Hanya setoran dari fund source yang mengurangi kas; kontribusi eksternal menambah tabungan tanpa menyentuh Dompet Utama.
+        $savingDeposits = (clone $periodEntries)->where('type', 'savings_deposit')->whereHas('lines', fn ($query) => $query->where('account_type', 'fund_source'))->sum('amount_minor');
+        $savingWithdrawals = (clone $periodEntries)->where('type', 'savings_withdrawal')->whereHas('lines', fn ($query) => $query->where('account_type', 'fund_source'))->sum('amount_minor');
 
         $savingGoals = SavingGoal::where('user_id', $userId)->where('status', 'active')->get();
         $savingIds = $savingGoals->pluck('id');

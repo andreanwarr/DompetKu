@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import {
     ArrowDownLeft,
     ArrowRightLeft,
@@ -9,6 +9,7 @@ import {
     ChevronRight,
     Pencil,
     Send,
+    Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { DetailDialog } from '@/components/finance/detail-dialog';
@@ -46,7 +47,8 @@ type Entry = {
     is_recurring?: boolean;
 };
 type Props = {
-    transactions: { data: Entry[] };
+    transactions: { data: Entry[]; total?: number; from?: number; to?: number; last_page?: number; current_page?: number; links?: { url: string | null; label: string; active: boolean }[] };
+    filters: { month: string; from: string; to: string; type: string | null; category: number };
     fundSources: Source[];
     categories: Category[];
 };
@@ -62,9 +64,25 @@ const newIdempotencyKey = () =>
 
 export default function Transactions({
     transactions,
+    filters,
     fundSources,
     categories,
 }: Props) {
+    const applyFilter = (params: Record<string, string>) => {
+        router.get('/transactions', params, { preserveScroll: true, preserveState: true });
+    };
+    const monthOptions = useMemo(() => {
+        const list: { value: string; label: string }[] = [];
+        const nowMonth = new Date();
+        for (let i = 0; i < 24; i++) {
+            const d = new Date(nowMonth.getFullYear(), nowMonth.getMonth() - i, 1);
+            list.push({
+                value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+                label: new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(d),
+            });
+        }
+        return list;
+    }, []);
     const localDate = () => {
         const date = new Date();
         const offset = date.getTimezoneOffset() * 60000;
@@ -81,6 +99,7 @@ export default function Transactions({
     );
     const [editing, setEditing] = useState<Entry | null>(null);
     const [openEdit, setOpenEdit] = useState(false);
+    const [deleting, setDeleting] = useState<Entry | null>(null);
     const form = useForm({
         type: 'expense',
         amount_minor: '',
@@ -656,14 +675,79 @@ export default function Transactions({
                             </form>
                         </DialogContent>
                     </Dialog>
+                    <Dialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+                        <DialogContent className="sm:max-w-sm">
+                            <DialogHeader>
+                                <DialogTitle>{t('Hapus transaksi?')}</DialogTitle>
+                                <DialogDescription>
+                                    {deleting
+                                        ? `${deleting.description ?? ''} · ${rupiah(deleting.amount)} · ${shortDate(deleting.date)}. ${t('Tidak bisa dibatalkan.')}`
+                                        : ''}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="flex gap-2">
+                                <Button variant="outline" className="flex-1" onClick={() => setDeleting(null)}>
+                                    {t('Batal')}
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    className="flex-1"
+                                    disabled={form.processing}
+                                    onClick={() => {
+                                        if (!deleting) return;
+                                        router.delete(`/transactions/${deleting.id}`, {
+                                            preserveScroll: true,
+                                            onSuccess: () => setDeleting(null),
+                                        });
+                                    }}
+                                >
+                                    <Trash2 /> {t('Hapus')}
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                     <Card className="border-border shadow-none">
                         <CardHeader className="flex-row items-center justify-between border-b pb-5">
                             <CardTitle>{t('Riwayat transaksi')}</CardTitle>
                             <span className="bg-muted rounded-full px-3 py-1 text-xs font-medium tabular-nums">
-                                {transactions.data.length} {t('transaksi')}
+                                {transactions.total ?? transactions.data.length} {t('transaksi')}
                             </span>
                         </CardHeader>
                         <CardContent>
+                            <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                <select
+                                    aria-label={t('Bulan')}
+                                    className={selectClass}
+                                    value={filters.month}
+                                    onChange={(e) => applyFilter({ month: e.target.value, type: filters.type ?? '', category: String(filters.category || '') })}
+                                >
+                                    {monthOptions.map((m) => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    aria-label={t('Jenis')}
+                                    className={selectClass}
+                                    value={filters.type ?? ''}
+                                    onChange={(e) => applyFilter({ month: filters.month, type: e.target.value, category: String(filters.category || '') })}
+                                >
+                                    <option value="">{t('Semua jenis')}</option>
+                                    <option value="income">{t('Pemasukan')}</option>
+                                    <option value="expense">{t('Pengeluaran')}</option>
+                                    <option value="transfer">{t('Transfer')}</option>
+                                </select>
+                                <select
+                                    aria-label={t('Kategori')}
+                                    className={selectClass}
+                                    value={String(filters.category || '')}
+                                    onChange={(e) => applyFilter({ month: filters.month, type: filters.type ?? '', category: e.target.value })}
+                                >
+                                    <option value="">{t('Semua kategori')}</option>
+                                    {categories.map((c) => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                             {transactions.data.length === 0 ? (
                                 <p className="empty-state">
                                     {t('Belum ada transaksi tercatat.')}
@@ -735,13 +819,22 @@ export default function Transactions({
                                                 ]}
                                                 footer={
                                                     !transfer ? (
-                                                        <Button
-                                                            variant="outline"
-                                                            className="mt-4 w-full"
-                                                            onClick={() => openEditModal(item)}
-                                                        >
-                                                            <Pencil /> {t('Ubah transaksi')}
-                                                        </Button>
+                                                        <div className="mt-4 flex w-full gap-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                className="flex-1"
+                                                                onClick={() => openEditModal(item)}
+                                                            >
+                                                                <Pencil /> {t('Ubah transaksi')}
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                className="text-destructive hover:bg-destructive/10 flex-1"
+                                                                onClick={() => setDeleting(item)}
+                                                            >
+                                                                <Trash2 /> {t('Hapus')}
+                                                            </Button>
+                                                        </div>
                                                     ) : undefined
                                                 }
                                                 trigger={

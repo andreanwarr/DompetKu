@@ -18,6 +18,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
     Route::put('transactions/{id}', [TransactionController::class, 'update'])->name('transactions.update');
+    Route::delete('transactions/{id}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     Route::post('transfers', [TransactionController::class, 'transfer'])->name('transfers.store');
     Route::resource('fund-sources', FundSourceController::class)->only(['index', 'store']);
     Route::resource('categories', CategoryController::class)->only(['index', 'store', 'update']);
