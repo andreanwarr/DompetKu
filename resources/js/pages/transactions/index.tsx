@@ -1,6 +1,7 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     ArrowDownLeft,
+    ArrowLeft,
     ArrowRightLeft,
     ArrowUpRight,
     CalendarDays,
@@ -68,8 +69,9 @@ export default function Transactions({
     fundSources,
     categories,
 }: Props) {
+    const fromDashboard = new URLSearchParams(window.location.search).get('from') === 'dashboard';
     const applyFilter = (params: Record<string, string>) => {
-        router.get('/transactions', params, { preserveScroll: true, preserveState: true });
+        router.get('/transactions', fromDashboard ? { ...params, from: 'dashboard' } : params, { preserveScroll: true, preserveState: true });
     };
     const monthOptions = useMemo(() => {
         const list: { value: string; label: string }[] = [];
@@ -202,6 +204,15 @@ export default function Transactions({
                 id="main-content"
                 className="finance-page flex flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8"
             >
+                {fromDashboard && (
+                    <Link
+                        href="/dashboard"
+                        className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center gap-2 text-sm font-semibold"
+                    >
+                        <ArrowLeft className="size-4" />
+                        {t('Kembali ke Dashboard')}
+                    </Link>
+                )}
                 <PageHeading
                     eyebrow={t('Arus kas')}
                     title={t('Catat transaksi')}

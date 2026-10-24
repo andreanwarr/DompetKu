@@ -76,6 +76,10 @@ export default function Dashboard({
     recentTransactions: Recent[];
     insights: Insight[];
 }) {
+    const currentMonth = new Intl.DateTimeFormat('en-CA', {
+        year: 'numeric',
+        month: '2-digit',
+    }).format(new Date());
     const totalExpense = expenseByCategory.reduce(
         (total, cat) => total + Number(cat.total),
         0,
@@ -233,6 +237,7 @@ export default function Dashboard({
                                 icon: ArrowDownLeft,
                                 tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
                                 label: t('Uang masuk'),
+                                href: `/transactions?month=${currentMonth}&type=income&from=dashboard`,
                                 detail: summary.bonusIncome > 0
                                     ? `${t('Gaji')} ${rupiah(summary.recurringIncome)} · ${t('Bonus')} ${rupiah(summary.bonusIncome)}`
                                     : undefined,
@@ -243,11 +248,13 @@ export default function Dashboard({
                                 icon: ArrowUpRight,
                                 tone: 'bg-orange-50 text-orange-800 dark:bg-orange-950 dark:text-orange-300',
                                 label: t('Uang keluar'),
+                                href: `/transactions?month=${currentMonth}&type=expense&from=dashboard`,
                             },
                         ].map((metric) => (
-                            <div
+                            <Link
                                 key={metric.title}
-                                className="surface [container-type:inline-size] flex flex-col justify-between gap-4 p-4 sm:gap-6 sm:p-6"
+                                href={metric.href}
+                                className="surface [container-type:inline-size] group flex flex-col justify-between gap-4 p-4 transition-colors hover:border-foreground/20 sm:gap-6 sm:p-6"
                             >
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="text-xs font-medium sm:text-sm">
@@ -273,7 +280,7 @@ export default function Dashboard({
                                         <p className="text-foreground/70 mt-1 truncate">{metric.detail}</p>
                                     )}
                                 </div>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 </section>

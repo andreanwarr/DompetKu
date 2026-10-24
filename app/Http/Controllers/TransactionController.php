@@ -121,6 +121,11 @@ class TransactionController extends Controller
     {
         $entry = JournalEntry::ownedBy((int) $request->user()->id)->where('public_id', $id)->firstOrFail();
         DB::transaction(function () use ($entry) {
+            // entry non-jurnal biasa punya dependen restrict: kasbon/pinjaman + pembayarannya; payments ikut cascade
+            \App\Models\Receivable::where('journal_entry_id', $entry->id)->delete();
+            \App\Models\ReceivablePayment::where('journal_entry_id', $entry->id)->delete();
+            \App\Models\LoanPayable::where('journal_entry_id', $entry->id)->delete();
+            \App\Models\LoanPayment::where('journal_entry_id', $entry->id)->delete();
             $entry->lines()->delete();
             $entry->delete();
         });
